@@ -50,4 +50,43 @@ router.post('/createuser', [
         res.status(500).json({ error: "Some error occured" })
     }
 })
+//----------------------------------------------------------------------------------
+//authenticate user: POST  "/api/auth/login" : no login require auth
+router.post('/login', [
+    body('email', 'Enter a valid Email').isEmail(),
+    // password must be at least 5 chars long
+    body('password', 'Password  can not be blank').exists(),
+], async (req, res) => {
+
+    // if there is an error return bad request and errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+    try {
+        let user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ error: "Please try to login with corrrect credentials" })
+        }
+
+        const passwordCompare = await bcrypt.compare(password, user.password);
+        if(!passwordCompare){
+            return res.status(400).json({ error: "Please try to login with corrrect credentials" }) 
+        }
+
+        const data = {
+            user: {
+                id: user.id
+            }
+        }
+        const authToken = jwt.sign(data, JWT_SECRET);
+        res.json({ authToken });
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ error: "Internal Server error occured" })
+    }
+})
 module.exports = router;
